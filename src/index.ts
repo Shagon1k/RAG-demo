@@ -12,6 +12,10 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { MemoryVectorStore } from "@langchain/classic/vectorstores/memory";
 
+type QueryInput = {
+    query: string;
+};
+
 // =============================================================================
 // RAG — Retrieval-Augmented Generation
 //
@@ -77,8 +81,8 @@ async function loadDocs(): Promise<Document[]> {
 // Smaller chunks = more precise retrieval; overlap = no lost context at edges.
 // ---------------------------------------------------------------------------
 
-async function splitDocs(docs: Document[]): Promise<Document[]> {
-    const splitDocs: Document[] = [];
+async function splitDocsToChunks(docs: Document[]): Promise<Document[]> {
+    const chunks: Document[] = [];
 
     for (const doc of docs) {
         const ext = doc.metadata.source?.split(".").pop()?.toLowerCase() ?? "";
@@ -88,10 +92,10 @@ async function splitDocs(docs: Document[]): Promise<Document[]> {
             ? RecursiveCharacterTextSplitter.fromLanguage(language, { chunkSize: 200, chunkOverlap: 20 })
             : new RecursiveCharacterTextSplitter({ chunkSize: 200, chunkOverlap: 20 });
 
-        splitDocs.push(...await splitter.splitDocuments([doc]));
+        chunks.push(...await splitter.splitDocuments([doc]));
     }
 
-    return splitDocs;
+    return chunks;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,7 +131,7 @@ function buildRagChain(vectorStore: MemoryVectorStore) {
 
     // [R] Sub-chain: extract query → retrieve docs → format into a context string
     const retrievalChain = RunnableSequence.from([
-        (input: { query: string }) => input.query,
+        (input: QueryInput) => input.query,
         retriever,
         formatDocsAsContext,
     ]);
@@ -141,7 +145,7 @@ function buildRagChain(vectorStore: MemoryVectorStore) {
     return RunnableSequence.from([
         {
             context: retrievalChain,                          // [R+A] retrieve & inject context
-            query: (input: { query: string }) => input.query, // [A]   pass query into prompt
+            query: (input: QueryInput) => input.query,        // [A]   pass query into prompt
         },
         prompt,                    // [A] augmented prompt = context + query
         model,                     // [G] generate answer
@@ -160,7 +164,7 @@ async function main() {
     console.log(`Loaded ${docs.length} documents`);
 
     console.log("Splitting into chunks...");
-    const chunks = await splitDocs(docs);
+    const chunks = await splitDocsToChunks(docs);
     console.log(`Split into ${chunks.length} chunks`);
 
     console.log("Embedding and storing...");

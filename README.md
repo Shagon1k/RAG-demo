@@ -1,4 +1,4 @@
-# RAG Demo (TypeScript)
+# RAG simple Demo
 
 This project is a minimal Retrieval-Augmented Generation (RAG) demo built with LangChain and OpenAI.
 It loads code from a GitHub repository, builds an in-memory vector index, and answers questions in an interactive terminal.
@@ -23,7 +23,7 @@ The goal is to show the full RAG pipeline end-to-end in a small, readable TypeSc
 1. Install dependencies:
 
 ```bash
-npm install --legacy-peer-deps
+npm install
 ```
 
 2. Add environment variables in `.env`:
